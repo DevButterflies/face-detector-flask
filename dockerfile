@@ -5,7 +5,7 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # 3. Copy the dependencies file to the working directory
-COPY requirements.txt .
+COPY requirement.txt .
 
 # 4. Install dependencies
 RUN pip install --no-cache-dir -r requirement.txt
