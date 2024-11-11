@@ -2,8 +2,6 @@
 import cv2
 import base64
 import numpy as np
-from confluent_kafka import Producer, Consumer
-from config.config import KAFKA_BOOTSTRAP_SERVERS, KAFKA_INPUT_TOPIC, KAFKA_OUTPUT_TOPIC
 
 def decode_image(image_file):
     """
@@ -48,15 +46,3 @@ def crop_image(image, box):
     x, y, w, h = box
     return image[y:y+h, x:x+w]
 
-def create_producer():
-    producer = Producer({'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS})
-    return producer
-
-def create_consumer():
-    consumer = Consumer({
-        'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
-        'group.id': 'face_detector_group',
-        'auto.offset.reset': 'earliest'
-    })
-    consumer.subscribe([KAFKA_INPUT_TOPIC])
-    return consumer

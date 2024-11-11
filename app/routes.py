@@ -1,19 +1,15 @@
 # app/routes.py
 from flask import Flask, request, jsonify, send_file
 from app.services import opencv_service, ssd_service, mtcnn_service
-from app.utils import decode_image, encode_image, crop_image, create_producer, create_consumer
+from app.utils import decode_image, crop_image
 from app import app
 import io
 import numpy as np
 from PIL import Image
-from threading import Thread
-from config.config import KAFKA_INPUT_TOPIC, KAFKA_OUTPUT_TOPIC
 import json as json
-import base64
-import cv2
 
-producer = create_producer()
-consumer = create_consumer()
+
+
 
 @app.route('/detect/opencv', methods=['POST'])
 def detect_face_opencv():
@@ -142,52 +138,3 @@ def detect_face_mtcnn():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-# Kafka consumer function to handle messages
-def consume_messages():
-    while True:
-        msg = consumer.poll(timeout=1.0)  # Poll Kafka broker
-        if msg is None:
-            continue
-        if msg.error():
-            print(f"Consumer error: {msg.error()}")
-            continue
-
-        # Deserialize input data (base64 encoded image from Kafka message)
-        input_data = json.loads(msg.value().decode('utf-8'))
-        input_image_b64 = input_data['input_image']
-
-        # Decode the base64 image back into a numpy array
-        input_image = base64.b64decode(input_image_b64)
-        input_image_np = np.frombuffer(input_image, dtype=np.uint8)
-        input_image = cv2.imdecode(input_image_np, cv2.IMREAD_COLOR)  # Decode image to OpenCV format
-
-        # Process the image using one of your models (e.g., MTCNN)
-        cropped_faces = mtcnn_service.detect_faces(input_image)  # Modify accordingly for SSD or OpenCV
-
-        # Re-encode the cropped image back to base64
-        if cropped_faces:
-            # Assuming you use only the first cropped face
-            cropped_image = cropped_faces[0]
-            _, buffer = cv2.imencode('.jpg', cropped_image)
-            cropped_image_b64 = base64.b64encode(buffer).decode('utf-8')
-
-            # Prepare Kafka message with the cropped image
-            output_data = {
-                "input_image": input_image_b64,
-                "cropped_image": cropped_image_b64,
-                "model_used": "MTCNN",  # Or whatever model you used
-                "metadata": {
-                    "timestamp": "2024-10-29T12:00:00Z",
-                    "request_id": input_data['metadata']['request_id']
-                }
-            }
-            producer.produce(KAFKA_OUTPUT_TOPIC, value=json.dumps(output_data))
-            producer.flush()  # Ensure message delivery
-
-# Route to manually send an image to Kafka input topic
-@app.route('/send_image', methods=['POST'])
-def send_image():
-    data = request.get_json()
-    producer.produce(KAFKA_INPUT_TOPIC, value=json.dumps(data))
-    producer.flush()
-    return jsonify({"status": "Image sent to Kafka"}), 200
