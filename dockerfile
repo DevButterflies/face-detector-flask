@@ -1,34 +1,20 @@
-# Use an official Python runtime as a base image
+# 1. Base Image
 FROM python:3.9-slim
 
-# Set the working directory in the container
+# 2. Set working directory inside the container
 WORKDIR /app
 
-#System Dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    && rm -rf /var/lib/apt/lists/*
+# 3. Copy the dependencies file to the working directory
+COPY requirements.txt .
 
-# Install Python dependencies
-COPY requirement.txt .
-RUN pip install --upgrade pip
+# 4. Install dependencies
 RUN pip install --no-cache-dir -r requirement.txt
 
-# Copy the current directory contents into the container
-COPY . /app
+# 5. Copy the rest of the application files to the container
+COPY . .
 
-# Install the required Python packages
-RUN pip install --no-cache-dir -r requirement.txt
-
-# Expose the port the app runs on
+# 6. Expose the Flask app port
 EXPOSE 5000
 
-# Define environment variable for Flask
-ENV FLASK_APP=run.py
-
-# Run the command to start the Flask app
-CMD ["flask", "run", "--host=0.0.0.0"]
+# 7. Command to run the Flask app
+CMD ["python", "run.py"]
